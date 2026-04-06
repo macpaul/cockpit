@@ -182,8 +182,8 @@ export const SuspendStatus = () => {
         <li id="system-health-suspend-status">
             <Flex flexWrap={{ default: 'nowrap' }}>
                 <FlexItem><MoonIcon className="suspend-status-icon" /></FlexItem>
-                <Flex id="system-health-suspend-status-text" spaceItems={{ default: 'spaceItemsNone' }} direction={{ default: 'column' }}>
-                    {text}
+                <Flex spaceItems={{ default: 'spaceItemsNone' }} direction={{ default: 'column' }}>
+                    <span id="system-health-suspend-status-text">{text}</span>
                     <FlexItem>
                         <Button variant="link" isInline
                                 id="system-health-suspend-status-cancel-btn"
