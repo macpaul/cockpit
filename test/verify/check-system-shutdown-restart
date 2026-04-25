@@ -190,12 +190,10 @@ class TestSuspendDialog(testlib.MachineCase):
         # Verify message field is hidden for suspend operations
         b.wait_not_present("#message")
 
-        # Check delay options work — use nth-child to avoid locale-sensitive text matching
+        # Check delay options work
         b.click("#delay")
-        # 4th item in the list (No delay, divider, 1 minute, 5 minutes)
-        b.click(".pf-v6-c-menu__list li:nth-child(4) button")
-        # Wait for menu to close after selection
-        b.wait_not_present(".pf-v6-c-menu__list li:nth-child(4)")
+        b.click("#delay-5")
+        b.wait_not_present("#delay-5")
 
         # Cancel the dialog
         b.click("#shutdown-dialog button.pf-m-link")
@@ -219,12 +217,10 @@ class TestSuspendDialog(testlib.MachineCase):
         b.click("#suspend")
         b.wait_popup("shutdown-dialog")
 
-        # Select 5 minutes delay — use nth-child to avoid locale-sensitive text matching
+        # Select 5 minutes delay
         b.click("#delay")
-        # 4th item in the list (No delay, divider, 1 minute, 5 minutes)
-        b.click(".pf-v6-c-menu__list li:nth-child(4) button")
-        # Wait for menu to close after selection
-        b.wait_not_present(".pf-v6-c-menu__list li:nth-child(4)")
+        b.click("#delay-5")
+        b.wait_not_present("#delay-5")
 
         # Submit
         b.click(f"#shutdown-dialog button{self.danger_btn_class}")
@@ -236,6 +232,94 @@ class TestSuspendDialog(testlib.MachineCase):
 
         # Clean up
         m.execute("systemctl stop cockpit-suspend.timer 2>/dev/null || true")
+
+    @testlib.nondestructive
+    def testSuspendWithWakeTime(self):
+        m = self.machine
+        b = self.browser
+
+        # Mock systemctl suspend to prevent actual suspend
+        self.restore_dir("/usr/local/bin")
+        m.write("/usr/local/bin/systemctl",
+                "#!/bin/sh\nif [ \"$1\" = 'suspend' ]; then echo 'suspend-mocked' >> /tmp/suspend.log; exit 0; fi\nexec /usr/bin/systemctl \"$@\"\n")
+        m.execute("chmod +x /usr/local/bin/systemctl")
+        self.addCleanup(m.execute, "rm -f /tmp/suspend.log")
+        self.addCleanup(m.execute, "echo 0 > /sys/class/rtc/rtc0/wakealarm 2>/dev/null || true")
+
+        self.login_and_go("/system")
+
+        # Open suspend dialog
+        b.click("#shutdown-group")  # caret
+        b.click("#suspend")
+        b.wait_popup("shutdown-dialog")
+
+        # Verify wake-up time toggle exists and is off by default
+        b.wait_visible("#wake-up-toggle")
+        b.wait_visible("#wake-up-toggle:not(:checked)")
+
+        # Enable wake-up time toggle
+        b.click("#wake-up-toggle")
+
+        # Wait for the wake date/time pickers to appear
+        b.wait_visible("#wake-time-input")
+
+        # Set a wake-up time 30 minutes in the future
+        # Get current time + 30 min from the server
+        wake_time = m.execute("date -d '+30 minutes' '+%H:%M'").strip()
+
+        # Set the wake time
+        b.set_input_text("#wake-time-input", wake_time)
+
+        # Select "No delay"
+        b.click("#delay")
+        b.click("#delay-0")
+        b.wait_not_present("#delay-0")
+
+        # Submit — RTC wake alarm and systemctl suspend should be called
+        b.click(f"#shutdown-dialog button{self.danger_btn_class}")
+        b.wait_not_present("#shutdown-dialog")
+
+        # Verify systemctl suspend was invoked
+        suspend_log = m.execute("cat /tmp/suspend.log").strip()
+        self.assertIn("suspend-mocked", suspend_log)
+
+        # Verify RTC wake alarm was set
+        wakealarm = m.execute("cat /sys/class/rtc/rtc0/wakealarm").strip()
+        self.assertTrue(wakealarm and int(wakealarm) > 0)
+
+    @testlib.nondestructive
+    def testSuspendWithWakeTimeCancel(self):
+        m = self.machine
+        b = self.browser
+
+        # Mock systemctl
+        self.restore_dir("/usr/local/bin")
+        m.write("/usr/local/bin/systemctl",
+                "#!/bin/sh\nif [ \"$1\" = 'suspend' ]; then echo 'suspend-mocked' >> /tmp/suspend.log; exit 0; fi\nexec /usr/bin/systemctl \"$@\"\n")
+        m.execute("chmod +x /usr/local/bin/systemctl")
+        self.addCleanup(m.execute, "rm -f /tmp/suspend.log")
+
+        # Ensure wakealarm is cleared initially
+        m.execute("echo 0 > /sys/class/rtc/rtc0/wakealarm 2>/dev/null || true")
+
+        self.login_and_go("/system")
+
+        # Open suspend dialog
+        b.click("#shutdown-group")  # caret
+        b.click("#suspend")
+        b.wait_popup("shutdown-dialog")
+
+        # Enable wake-up time toggle
+        b.click("#wake-up-toggle")
+        b.wait_visible("#wake-time-input")
+
+        # Cancel the dialog
+        b.click("#shutdown-dialog button.pf-m-link")
+        b.wait_not_present("#shutdown-dialog")
+
+        # suspend should NOT have been called
+        self.assertIn("No such file", m.execute("cat /tmp/suspend.log 2>&1 || true"))
+
 
 class TestUncleanShutdownStatus(testlib.MachineCase):
 
