@@ -73,19 +73,24 @@ export class ShutdownModal extends React.Component {
     componentDidMount() {
         this.server_time.wait()
                 .then(() => {
-                    const dateObject = this.server_time.utc_fake_now;
-                    const date = dateObject.toISOString().split("T")[0];
-                    const hour = dateObject.getUTCHours();
-                    const minute = dateObject.getUTCMinutes();
+                    const dateObject = this.server_time.now;
+                    const date = dateObject.getFullYear() + "-" +
+                                 (dateObject.getMonth() + 1).toString().padStart(2, "0") + "-" +
+                                 dateObject.getDate().toString().padStart(2, "0");
+                    const hour = dateObject.getHours();
+                    const minute = dateObject.getMinutes();
                     const timeStr = hour.toString().padStart(2, "0") + ":" + minute.toString().padStart(2, "0");
+                    const startDate = new Date(dateObject);
+                    startDate.setHours(0, 0, 0, 0);
+
                     this.setState({
                         dateObject,
                         date,
-                        startDate: new Date(dateObject.toDateString()),
+                        startDate,
                         time: timeStr,
                         // Initialize wake-up time fields to current time
                         wakeDate: date,
-                        wakeDateObject: new Date(dateObject.toDateString()),
+                        wakeDateObject: new Date(dateObject),
                         wakeTime: timeStr,
                         wakeHour: hour,
                         wakeMinute: minute,
