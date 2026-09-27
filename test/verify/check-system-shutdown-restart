@@ -142,6 +142,28 @@ class TestShutdownRestart(testlib.MachineCase):
 class TestSuspendDialog(testlib.MachineCase):
 
     @testlib.nondestructive
+    def testSuspendNotSupported(self):
+        m = self.machine
+        b = self.browser
+
+        # Mock absence of kernel suspend support by masking /sys/power/state
+        m.execute("mount -t tmpfs none /sys/power")
+        self.addCleanup(m.execute, "! mountpoint -q /sys/power || umount /sys/power")
+
+        self.login_and_go("/system")
+
+        # Open the dropdown and verify Suspend option is absent
+        b.click("#shutdown-group")  # caret
+        b.wait_not_present("#suspend")
+
+        # Restore /sys/power
+        m.execute("umount /sys/power")
+        b.reload()
+        b.enter_page("/system")
+        b.click("#shutdown-group")
+        b.wait_visible("#suspend")
+
+    @testlib.nondestructive
     def testSuspendDialogBasic(self):
         m = self.machine
         b = self.browser
