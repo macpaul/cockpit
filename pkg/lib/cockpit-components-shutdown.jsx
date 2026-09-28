@@ -183,15 +183,15 @@ export class ShutdownModal extends React.Component {
         const mode = this._getMode();
         const Dialogs = this.context;
         const options = [
-            { value: "0", content: _("No delay") },
+            { value: "0", content: _("No delay"), id: "delay-0", ouiaId: "delay-0" },
             { decorator: "divider", key: "divider" },
-            { value: "1", content: _("1 minute") },
-            { value: "5", content: _("5 minutes") },
-            { value: "20", content: _("20 minutes") },
-            { value: "40", content: _("40 minutes") },
-            { value: "60", content: _("60 minutes") },
+            { value: "1", content: _("1 minute"), id: "delay-1", ouiaId: "delay-1" },
+            { value: "5", content: _("5 minutes"), id: "delay-5", ouiaId: "delay-5" },
+            { value: "20", content: _("20 minutes"), id: "delay-20", ouiaId: "delay-20" },
+            { value: "40", content: _("40 minutes"), id: "delay-40", ouiaId: "delay-40" },
+            { value: "60", content: _("60 minutes"), id: "delay-60", ouiaId: "delay-60" },
             { decorator: "divider", key: "divider-2" },
-            { value: "x", content: _("Specific time") },
+            { value: "x", content: _("Specific time"), id: "delay-x", ouiaId: "delay-x" },
         ];
 
         return (
