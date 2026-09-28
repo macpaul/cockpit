@@ -238,6 +238,9 @@ class TestSuspendDialog(testlib.MachineCase):
         m = self.machine
         b = self.browser
 
+        if m.execute("test -f /sys/class/rtc/rtc0/wakealarm", check=False)[0] != 0:
+            self.skipTest("RTC wake alarm is not supported on this system")
+
         # Mock systemctl suspend to prevent actual suspend
         self.restore_dir("/usr/local/bin")
         m.write("/usr/local/bin/systemctl",
@@ -292,6 +295,9 @@ class TestSuspendDialog(testlib.MachineCase):
         m = self.machine
         b = self.browser
 
+        if m.execute("test -f /sys/class/rtc/rtc0/wakealarm", check=False)[0] != 0:
+            self.skipTest("RTC wake alarm is not supported on this system")
+
         # Mock systemctl
         self.restore_dir("/usr/local/bin")
         m.write("/usr/local/bin/systemctl",
@@ -319,6 +325,25 @@ class TestSuspendDialog(testlib.MachineCase):
 
         # suspend should NOT have been called
         self.assertIn("No such file", m.execute("cat /tmp/suspend.log 2>&1 || true"))
+
+    @testlib.nondestructive
+    def testWakeTimeNotSupported(self):
+        m = self.machine
+        b = self.browser
+
+        # Mock absence of RTC wakealarm by masking /sys/class/rtc
+        m.execute("mount -t tmpfs none /sys/class/rtc 2>/dev/null || true")
+        self.addCleanup(m.execute, "! mountpoint -q /sys/class/rtc || umount /sys/class/rtc")
+
+        self.login_and_go("/system")
+
+        # Open suspend dialog
+        b.click("#shutdown-group")  # caret
+        b.click("#suspend")
+        b.wait_popup("shutdown-dialog")
+
+        # Verify wake-up time toggle is absent when not supported
+        b.wait_not_present("#wake-up-toggle")
 
 
 class TestUncleanShutdownStatus(testlib.MachineCase):
