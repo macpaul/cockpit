@@ -17,6 +17,7 @@ import { Switch } from "@patternfly/react-core/dist/esm/components/Switch/index.
 import { TextArea } from "@patternfly/react-core/dist/esm/components/TextArea/index.js";
 import { DatePicker } from "@patternfly/react-core/dist/esm/components/DatePicker/index.js";
 import { TimePicker } from "@patternfly/react-core/dist/esm/components/TimePicker/index.js";
+import { InputGroup, InputGroupItem } from "@patternfly/react-core/dist/esm/components/InputGroup/index.js";
 
 import { ServerTime } from 'serverTime.js';
 import * as timeformat from "timeformat";
@@ -338,58 +339,70 @@ export class ShutdownModal extends React.Component {
                                     selected={this.state.selected}
                                     isDisabled={!this.state.formFilled}
                                     onSelect={s => this.setState({ selected: s }, this.calculate)} />
-                                {this.state.selected === "x" && <>
-                                    <DatePicker aria-label={_("Pick date")}
-                                                buttonAriaLabel={_("Toggle date picker")}
-                                                className='shutdown-date-picker'
-                                                invalidFormatText=""
-                                                isDisabled={!this.state.formFilled}
-                                                locale={timeformat.dateFormatLang()}
-                                                weekStart={timeformat.firstDayOfWeek()}
-                                                onBlur={this.calculate}
-                                                onChange={(_, d, ds) => this.updateDate(d, ds)}
-                                                validators={[this.dateRangeValidator]}
-                                                value={this.state.date}
-                                                appendTo={() => document.body} />
-                                    <TimePicker time={this.state.time} is24Hour
-                                                className='shutdown-time-picker'
-                                                id="shutdown-time"
-                                                isDisabled={!this.state.formFilled}
-                                                invalidFormatErrorMessage=""
-                                                menuAppendTo={() => document.body}
-                                                onBlur={this.calculate}
-                                                onChange={(_, time, h, m) => this.updateTime(time, h, m) } />
-                                </>}
+                                {this.state.selected === "x" &&
+                                    <InputGroup className='shutdown-date-time-picker'>
+                                        <InputGroupItem>
+                                            <DatePicker aria-label={_("Pick date")}
+                                                        buttonAriaLabel={_("Toggle date picker")}
+                                                        className='shutdown-date-picker'
+                                                        invalidFormatText=""
+                                                        isDisabled={!this.state.formFilled}
+                                                        locale={timeformat.dateFormatLang()}
+                                                        weekStart={timeformat.firstDayOfWeek()}
+                                                        onBlur={this.calculate}
+                                                        onChange={(_, d, ds) => this.updateDate(d, ds)}
+                                                        validators={[this.dateRangeValidator]}
+                                                        value={this.state.date}
+                                                        appendTo={() => document.body} />
+                                        </InputGroupItem>
+                                        <InputGroupItem>
+                                            <TimePicker time={this.state.time} is24Hour
+                                                        className='shutdown-time-picker'
+                                                        id="shutdown-time"
+                                                        isDisabled={!this.state.formFilled}
+                                                        invalidFormatErrorMessage=""
+                                                        menuAppendTo={() => document.body}
+                                                        onBlur={this.calculate}
+                                                        onChange={(_, time, h, m) => this.updateTime(time, h, m) } />
+                                        </InputGroupItem>
+                                    </InputGroup>
+                                }
                             </Flex>
                             <FormHelper fieldId="delay" helperTextInvalid={this.state.dateError} />
                         </FormGroup>
-                        {mode === "suspend" && this.state.supportsWake && <FormGroup fieldId="wake-up-time" label={_("Wake-up time")}>
+                        {mode === "suspend" && this.state.supportsWake && <FormGroup fieldId="wake-up-time" label={_("Wake-up time")} isStack>
                             <Switch id="wake-up-toggle"
                                     label={_("Set wake-up time")}
                                     isChecked={this.state.wakeEnabled}
                                     onChange={(_, checked) => this.setState({ wakeEnabled: checked, wakeError: "", wakeEpoch: null }, () => { if (checked) this.calculateWake(); })} />
                             {this.state.wakeEnabled && <>
                                 <Flex className="shutdown-delay-group" alignItems={{ default: 'alignItemsCenter' }}>
-                                    <DatePicker aria-label={_("Pick wake date")}
-                                                buttonAriaLabel={_("Toggle wake date picker")}
-                                                className='shutdown-date-picker'
-                                                invalidFormatText=""
-                                                isDisabled={!this.state.formFilled}
-                                                locale={timeformat.dateFormatLang()}
-                                                weekStart={timeformat.firstDayOfWeek()}
-                                                onBlur={this.calculateWake}
-                                                onChange={(_, d, ds) => this.updateWakeDate(d, ds)}
-                                                validators={[this.wakeRangeValidator]}
-                                                value={this.state.wakeDate}
-                                                appendTo={() => document.body} />
-                                    <TimePicker time={this.state.wakeTime} is24Hour
-                                                className='shutdown-time-picker'
-                                                id="wake-time"
-                                                isDisabled={!this.state.formFilled}
-                                                invalidFormatErrorMessage=""
-                                                menuAppendTo={() => document.body}
-                                                onBlur={this.calculateWake}
-                                                onChange={(_, time, h, m) => this.updateWakeTime(time, h, m)} />
+                                    <InputGroup className='shutdown-date-time-picker'>
+                                        <InputGroupItem>
+                                            <DatePicker aria-label={_("Pick wake date")}
+                                                        buttonAriaLabel={_("Toggle wake date picker")}
+                                                        className='shutdown-date-picker'
+                                                        invalidFormatText=""
+                                                        isDisabled={!this.state.formFilled}
+                                                        locale={timeformat.dateFormatLang()}
+                                                        weekStart={timeformat.firstDayOfWeek()}
+                                                        onBlur={this.calculateWake}
+                                                        onChange={(_, d, ds) => this.updateWakeDate(d, ds)}
+                                                        validators={[this.wakeRangeValidator]}
+                                                        value={this.state.wakeDate}
+                                                        appendTo={() => document.body} />
+                                        </InputGroupItem>
+                                        <InputGroupItem>
+                                            <TimePicker time={this.state.wakeTime} is24Hour
+                                                        className='shutdown-time-picker'
+                                                        id="wake-time"
+                                                        isDisabled={!this.state.formFilled}
+                                                        invalidFormatErrorMessage=""
+                                                        menuAppendTo={() => document.body}
+                                                        onBlur={this.calculateWake}
+                                                        onChange={(_, time, h, m) => this.updateWakeTime(time, h, m)} />
+                                        </InputGroupItem>
+                                    </InputGroup>
                                 </Flex>
                                 <FormHelper fieldId="wake-up-time" helperTextInvalid={this.state.wakeError} />
                             </>}
