@@ -49,6 +49,7 @@ export class ShutdownModal extends React.Component {
             when: "1",
             formFilled: false,
             // Wake-up time fields (suspend mode only)
+            supportsWake: false,
             wakeEnabled: false,
             wakeDateObject: undefined,
             wakeDate: "",
@@ -72,6 +73,18 @@ export class ShutdownModal extends React.Component {
     }
 
     componentDidMount() {
+        if (this.props.suspend) {
+            cockpit.file("/sys/class/rtc/rtc0/wakealarm").read()
+                    .then(content => {
+                        if (content !== null) {
+                            this.setState({ supportsWake: true });
+                        }
+                    })
+                    .catch(() => {
+                        this.setState({ supportsWake: false });
+                    });
+        }
+
         this.server_time.wait()
                 .then(() => {
                     const dateObject = this.server_time.now;
@@ -173,7 +186,7 @@ export class ShutdownModal extends React.Component {
     }
 
     calculateWake() {
-        if (!this.state.wakeEnabled)
+        if (!this.state.supportsWake || !this.state.wakeEnabled)
             return;
 
         if (this.wake_date_spawn)
@@ -232,15 +245,15 @@ export class ShutdownModal extends React.Component {
             const minutes = parseInt(delay, 10) || 0;
             let cmd;
 
-            if (this.state.wakeEnabled && this.state.wakeEpoch) {
+            if (this.state.supportsWake && this.state.wakeEnabled && this.state.wakeEpoch) {
                 // With wake-up time: use rtcwake
                 if (minutes === 0) {
                     // Immediate suspend with RTC wake alarm
                     cmd = ["rtcwake", "-m", "mem", "-t", this.state.wakeEpoch.toString()];
                 } else {
-                    // Delayed suspend with RTC wake alarm: schedule via systemd-run
-                    cmd = ["systemd-run", "--unit=cockpit-suspend", "--on-active=" + minutes + "m",
-                           "bash", "-c", "rtcwake -m no -t " + this.state.wakeEpoch + " && systemctl suspend"];
+                    // Delayed suspend with RTC wake alarm: set alarm now and schedule suspend
+                    cmd = ["bash", "-c", "rtcwake -m no -t " + this.state.wakeEpoch +
+                           " && systemd-run --unit=cockpit-suspend --on-active=" + minutes + "m systemctl suspend"];
                 }
             } else {
                 // Without wake-up time
@@ -350,11 +363,11 @@ export class ShutdownModal extends React.Component {
                             </Flex>
                             <FormHelper fieldId="delay" helperTextInvalid={this.state.dateError} />
                         </FormGroup>
-                        {mode === "suspend" && <FormGroup fieldId="wake-up-time" label={_("Wake-up time")}>
+                        {mode === "suspend" && this.state.supportsWake && <FormGroup fieldId="wake-up-time" label={_("Wake-up time")}>
                             <Switch id="wake-up-toggle"
                                     label={_("Set wake-up time")}
                                     isChecked={this.state.wakeEnabled}
-                                    onChange={(_, checked) => this.setState({ wakeEnabled: checked, wakeError: "", wakeEpoch: null }, () => { if (checked) this.calculateWake() })} />
+                                    onChange={(_, checked) => this.setState({ wakeEnabled: checked, wakeError: "", wakeEpoch: null }, () => { if (checked) this.calculateWake(); })} />
                             {this.state.wakeEnabled && <>
                                 <Flex className="shutdown-delay-group" alignItems={{ default: 'alignItemsCenter' }}>
                                     <DatePicker aria-label={_("Pick wake date")}
@@ -385,7 +398,7 @@ export class ShutdownModal extends React.Component {
                     {this.state.error && <Alert isInline variant='danger' title={this.state.error} />}
                 </ModalBody>
                 <ModalFooter>
-                    <Button variant='danger' isDisabled={this.state.error || this.state.dateError || (this.state.wakeEnabled && (this.state.wakeError || !this.state.wakeEpoch))} onClick={this.onSubmit}>{mode === "suspend" ? _("Suspend") : (mode === "shutdown" ? _("Shut down") : _("Reboot"))}</Button>
+                    <Button variant='danger' isDisabled={this.state.error || this.state.dateError || (this.state.supportsWake && this.state.wakeEnabled && (this.state.wakeError || !this.state.wakeEpoch))} onClick={this.onSubmit}>{mode === "suspend" ? _("Suspend") : (mode === "shutdown" ? _("Shut down") : _("Reboot"))}</Button>
                     <Button variant='link' onClick={this.props.onClose || Dialogs.close}>{_("Cancel")}</Button>
                 </ModalFooter>
             </Modal>
