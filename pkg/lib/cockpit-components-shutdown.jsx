@@ -246,6 +246,11 @@ export class ShutdownModal extends React.Component {
             const minutes = parseInt(delay, 10) || 0;
             let cmd;
 
+            // Note: logind's ScheduleShutdown() D-Bus API does not support "suspend" as a type
+            // (only "poweroff", "reboot", "halt" and their dry-run variants are accepted).
+            // We therefore schedule suspend via a transient systemd-run timer unit
+            // (cockpit-suspend.timer) and cancel it with "systemctl stop cockpit-suspend.timer"
+            // rather than through CancelScheduledShutdown.
             if (this.state.supportsWake && this.state.wakeEnabled && this.state.wakeEpoch) {
                 // With wake-up time: set RTC alarm via sysfs, then suspend
                 const setAlarm = "echo 0 > /sys/class/rtc/rtc0/wakealarm && echo " + this.state.wakeEpoch + " > /sys/class/rtc/rtc0/wakealarm";
@@ -253,8 +258,10 @@ export class ShutdownModal extends React.Component {
                     // Immediate suspend with RTC wake alarm
                     cmd = ["sh", "-c", setAlarm + " && systemctl suspend"];
                 } else {
-                    // Delayed suspend with RTC wake alarm: set alarm now and schedule suspend
-                    cmd = ["sh", "-c", setAlarm +
+                    // Delayed suspend with RTC wake alarm: broadcast wall message, set alarm, schedule suspend
+                    cmd = ["sh", "-c",
+                        "wall 'System will suspend in " + minutes + " minute(s).' && " +
+                           setAlarm +
                            " && systemd-run --unit=cockpit-suspend --on-active=" + minutes + "m systemctl suspend"];
                 }
             } else {
@@ -262,7 +269,10 @@ export class ShutdownModal extends React.Component {
                 if (minutes === 0) {
                     cmd = ["systemctl", "suspend"];
                 } else {
-                    cmd = ["systemd-run", "--unit=cockpit-suspend", "--on-active=" + minutes + "m", "systemctl", "suspend"];
+                    // Delayed suspend: broadcast wall message, then schedule suspend
+                    cmd = ["sh", "-c",
+                        "wall 'System will suspend in " + minutes + " minute(s).' && " +
+                           "systemd-run --unit=cockpit-suspend --on-active=" + minutes + "m systemctl suspend"];
                 }
             }
             cockpit.spawn(cmd, { superuser: "require", err: "message" })
