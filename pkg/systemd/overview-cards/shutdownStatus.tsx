@@ -27,6 +27,10 @@ const getScheduledShutdown = (setShutdownTime: (t: number) => void, setShutdownT
             .catch(err => console.warn("Failed to get ScheduledShutdown property", err.toString()));
 };
 
+// Cancel a logind-managed scheduled shutdown (poweroff or reboot).
+// Note: logind's ScheduleShutdown() D-Bus API does not support "suspend",
+// so scheduled suspends are handled via a transient cockpit-suspend.timer unit
+// and cancelled by cancelSuspendAction() below, not by this function.
 const cancelShutdownAction = () => {
     const client = cockpit.dbus("org.freedesktop.login1", { superuser: "try" });
     return client.call("/org/freedesktop/login1", "org.freedesktop.login1.Manager", "CancelScheduledShutdown")
