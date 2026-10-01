@@ -247,13 +247,14 @@ export class ShutdownModal extends React.Component {
             let cmd;
 
             if (this.state.supportsWake && this.state.wakeEnabled && this.state.wakeEpoch) {
-                // With wake-up time: use rtcwake
+                // With wake-up time: set RTC alarm via sysfs, then suspend
+                const setAlarm = "echo 0 > /sys/class/rtc/rtc0/wakealarm && echo " + this.state.wakeEpoch + " > /sys/class/rtc/rtc0/wakealarm";
                 if (minutes === 0) {
                     // Immediate suspend with RTC wake alarm
-                    cmd = ["rtcwake", "-m", "mem", "-t", this.state.wakeEpoch.toString()];
+                    cmd = ["sh", "-c", setAlarm + " && systemctl suspend"];
                 } else {
                     // Delayed suspend with RTC wake alarm: set alarm now and schedule suspend
-                    cmd = ["bash", "-c", "rtcwake -m no -t " + this.state.wakeEpoch +
+                    cmd = ["sh", "-c", setAlarm +
                            " && systemd-run --unit=cockpit-suspend --on-active=" + minutes + "m systemctl suspend"];
                 }
             } else {
